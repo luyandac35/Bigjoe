@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Track Orders - Big Joe's</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/auth.js"></script>
+</head>
+<body>
+<div class="topbar">📍 Track your Big Joe's order using your ticket number or phone number</div>
+<nav class="navbar">
+  <a href="index.html" class="logo">🍔 BIG JOE'S</a>
+  <div class="nav-links"></div>
+</nav>
+
+<section class="container">
+  <h1 class="section-title">Track Orders</h1>
+  <div id="success-banner" class="alert alert-success" style="display:none;text-align:center;font-size:16px;margin-bottom:24px"></div>
+
+  <div class="form-box" style="max-width:760px;margin-bottom:24px">
+    <h3 style="margin-bottom:16px">Find Your Order</h3>
+    <p class="text-muted" style="margin-bottom:10px">Customers do not need to log in. Use your ticket number or the phone number used at checkout.</p>
+    <div class="form-row">
+      <div><label>Order Number</label><input id="search-order" placeholder="Example: BJ12345"></div>
+      <div><label>Phone Number</label><input id="search-phone" placeholder="071 000 0000"></div>
+    </div>
+    <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-yellow" onclick="loadOrders()">Search Orders</button>
+      <a href="menu.html" class="btn btn-outline">Order More Food</a>
+    </div>
+  </div>
+
+  <div id="orders-list">
+    <div class="empty-state"><div class="icon">📋</div><h3>Enter your ticket number or phone number</h3><p>Your order status will appear here.</p></div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div><h3>BIG JOE'S</h3><a href="menu.html">Menu</a><a href="promos.html">Promos &amp; Rewards</a></div>
+  <div><h3>Support</h3><a href="faq.html">FAQ</a><a href="#">Contact Big Joe's</a></div>
+  <div><h3>Find Us</h3><p>Durban, South Africa</p><p>031 123 4567</p></div>
+</footer>
+<div class="footer-bottom">Copyright &copy; Big Joe's Fast Food. All Rights Reserved.</div>
+
+<script>
+BJ.initNav()
+
+var lastOrder = localStorage.getItem('lastOrderNum')
+var lastPhone = localStorage.getItem('lastOrderPhone')
+if (lastOrder) {
+  var banner = document.getElementById('success-banner')
+  banner.innerHTML = '🎉 Order <strong>' + lastOrder + '</strong> placed successfully! Keep this number. We will call your number when it is ready.'
+  banner.style.display = 'block'
+  document.getElementById('search-order').value = lastOrder
+  if (lastPhone) document.getElementById('search-phone').value = lastPhone
+  localStorage.removeItem('lastOrderNum')
+}
+
+async function loadOrders() {
+  var orderNo = document.getElementById('search-order').value.trim().toUpperCase()
+  var phone = document.getElementById('search-phone').value.trim()
+  var container = document.getElementById('orders-list')
+
+  if (!orderNo && !phone) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">🔎</div><h3>Please enter an order number or phone number</h3></div>'
+    return
+  }
+
+  container.innerHTML = '<div class="loading-state"><div class="spin-lg"></div>Loading orders...</div>'
+
+  var q = _db.from('orders').select('*, order_items(item_name, quantity, unit_price)').order('created_at', { ascending: false })
+  if (orderNo) q = q.eq('order_number', orderNo)
+  else q = q.eq('customer_phone', phone)
+
+  var { data: orders, error } = await q
+
+  if (error) {
+    container.innerHTML = '<div class="alert alert-error">Failed to load orders: ' + error.message + '</div>'
+    return
+  }
+
+  if (!orders || !orders.length) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">📋</div><h3>No orders found</h3><p>Check your ticket number or phone number and try again.</p></div>'
+    return
+  }
+
+  container.innerHTML = orders.map(function(order) {
+    var date = new Date(order.created_at).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' })
+    var itemsList = (order.order_items || []).map(function(i) {
+      return i.item_name + ' × ' + i.quantity
+    }).join(' &nbsp;|&nbsp; ')
+    var pay = order.payment_method ? order.payment_method.toUpperCase() : 'Not recorded'
+    if (order.card_last4) pay += ' ending ' + order.card_last4
+
+    return '<div class="order-card">' +
+      '<div class="order-header">' +
+        '<div>' +
+          '<div class="order-number">Ticket: ' + order.order_number + '</div>' +
+          '<div class="order-date">📅 ' + date + ' &nbsp;·&nbsp; ' + String(order.order_type || '').replace('_', ' ') + '</div>' +
+        '</div>' +
+        BJ.statusBadge(order.status) +
+      '</div>' +
+      '<div class="order-items-list">' + (itemsList || 'No items recorded') + '</div>' +
+      '<div class="order-footer">' +
+        '<span style="color:#666;font-size:13px">' + (order.customer_name || '') + ' · ' + (order.customer_phone || '') + '<br>Payment: ' + pay + '</span>' +
+        '<span class="order-total">R' + Number(order.total_amount).toFixed(2) + '</span>' +
+      '</div>' +
+    '</div>'
+  }).join('')
+}
+
+if (lastOrder) loadOrders()
+</script>
+</body>
+</html>

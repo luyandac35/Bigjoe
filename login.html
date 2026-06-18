@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin / Staff Login - Big Joe's</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script src="js/supabase.js"></script>
+    <script src="js/auth.js"></script>
+</head>
+<body>
+
+    <div class="topbar">📍 Staff/Admin Login — Customers order without logging in</div>
+
+    <nav class="navbar">
+        <a href="index.html" class="logo">🍔 BIG JOE'S</a>
+        <div class="nav-links"></div>
+    </nav>
+
+    <section class="container" style="max-width:520px;padding-top:60px">
+        <h1 class="section-title">Admin / Staff Login</h1>
+
+        <div class="form-box">
+            <div class="alert alert-info">
+                Only admin or staff should log in here. Customers order as guests.
+            </div>
+
+            <div id="auth-error" class="alert alert-error" style="display:none"></div>
+
+            <label>Email Address</label>
+            <input id="email" type="email" placeholder="admin@example.com">
+
+            <label>Password</label>
+            <input id="password" type="password" placeholder="Enter password">
+
+            <br><br>
+
+            <button class="btn btn-full" id="login-btn">Sign In</button>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div>
+            <h3>BIG JOE'S</h3>
+            <a href="menu.html">Menu</a>
+            <a href="promos.html">Promos &amp; Rewards</a>
+        </div>
+
+        <div>
+            <h3>Support</h3>
+            <a href="faq.html">FAQ</a>
+            <a href="#">Contact Big Joe's</a>
+        </div>
+
+        <div>
+            <h3>Find Us</h3>
+            <p>Durban, South Africa</p>
+            <p>031 123 4567</p>
+        </div>
+    </footer>
+
+    <div class="footer-bottom">
+        Copyright &copy; Big Joe's Fast Food. All Rights Reserved.
+    </div>
+
+    <script>
+        BJ.initNav()
+
+        var btn = document.getElementById('login-btn')
+        var errEl = document.getElementById('auth-error')
+
+        async function redirectByRole() {
+            var profile = await BJ.getProfile()
+
+            if (!profile) return false
+
+            if (profile.role === 'admin') {
+                window.location.href = 'dashboard.html'
+                return true
+            }
+
+            if (profile.role === 'staff') {
+                window.location.href = 'kitchen.html'
+                return true
+            }
+
+            await _db.auth.signOut()
+            return false
+        }
+
+        ; (async function () {
+            await redirectByRole()
+        })()
+
+        async function doLogin() {
+            var email = document.getElementById('email').value.trim()
+            var password = document.getElementById('password').value
+
+            errEl.style.display = 'none'
+
+            if (!email || !password) {
+                errEl.textContent = 'Please enter email and password.'
+                errEl.style.display = 'block'
+                return
+            }
+
+            btn.innerHTML = '<span class="spinner"></span> Signing in...'
+            btn.disabled = true
+
+            var res = await _db.auth.signInWithPassword({
+                email: email,
+                password: password
+            })
+
+            if (res.error) {
+                errEl.textContent = res.error.message
+                errEl.style.display = 'block'
+                btn.textContent = 'Sign In'
+                btn.disabled = false
+                return
+            }
+
+            var redirected = await redirectByRole()
+
+            if (!redirected) {
+                errEl.textContent = 'Access denied. This login is only for admin or staff.'
+                errEl.style.display = 'block'
+                btn.textContent = 'Sign In'
+                btn.disabled = false
+            }
+        }
+
+        btn.addEventListener('click', doLogin)
+
+        document.getElementById('password').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') doLogin()
+        })
+    </script>
+
+</body>
+</html>

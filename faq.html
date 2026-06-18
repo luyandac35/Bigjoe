@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FAQ - Big Joe's</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/auth.js"></script>
+</head>
+<body>
+<div class="topbar">📍 Big Joe's Help Centre</div>
+<nav class="navbar">
+  <a href="index.html" class="logo">🍔 BIG JOE'S</a>
+  <div class="nav-links"></div>
+</nav>
+
+<section class="container">
+  <h1 class="section-title">Frequently Asked Questions</h1>
+
+  <div class="table-box" style="max-width:900px;margin:auto">
+    <h3>Do I need an account to order?</h3>
+    <p style="margin:8px 0 22px;color:#555;line-height:1.7">No. Customers can browse the menu, add items to cart, checkout and place an order without logging in.</p>
+
+    <h3>Who must log in?</h3>
+    <p style="margin:8px 0 22px;color:#555;line-height:1.7">Only the admin logs in. The admin can manage orders, products, inventory, promotions, customers and reports.</p>
+
+    <h3>How do I collect my order?</h3>
+    <p style="margin:8px 0 22px;color:#555;line-height:1.7">After checkout, you receive a ticket number like BJ12345. Wait for staff to call your number, then collect your order.</p>
+
+    <h3>Can I pay by card?</h3>
+    <p style="margin:8px 0 22px;color:#555;line-height:1.7">Yes, the checkout page has card fields. For this demo project, real bank payments are not processed and full card numbers are not saved.</p>
+
+    <h3>How do I track my order?</h3>
+    <p style="margin:8px 0 22px;color:#555;line-height:1.7">Open Track Orders and search using your ticket number or the phone number used during checkout.</p>
+
+    <h3>How long does preparation take?</h3>
+    <p style="margin:8px 0 22px;color:#555;line-height:1.7">Usually 10–20 minutes, depending on how busy the restaurant is and the size of the order.</p>
+
+    <h3>What do the order statuses mean?</h3>
+    <p style="margin:8px 0 22px;color:#555;line-height:1.7">Pending means the order is received. Preparing means the kitchen is making it. Ready means you can collect. Done or collected means the order is complete.</p>
+  </div>
+</section>
+
+<footer class="footer">
+  <div><h3>BIG JOE'S</h3><a href="menu.html">Menu</a><a href="orders.html">Track Orders</a></div>
+  <div><h3>Support</h3><a href="faq.html">FAQ</a><a href="#">Contact Big Joe's</a></div>
+  <div><h3>Find Us</h3><p>Durban, South Africa</p><p>031 123 4567</p></div>
+</footer>
+<div class="footer-bottom">Copyright &copy; Big Joe's Fast Food. All Rights Reserved.</div>
+
+<script>BJ.initNav()</script>
+</body>
+</html>

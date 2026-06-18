@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Predictions - Big Joe's</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/auth.js"></script>
+</head>
+<body>
+
+<div class="topbar">🤖 AI Sales Prediction — Big Joe's</div>
+
+<nav class="navbar">
+  <a href="index.html" class="logo">🍔 BIG JOE'S</a>
+  <div class="nav-links"></div>
+</nav>
+
+<section class="container">
+  <h1 class="section-title">AI Sales Prediction</h1>
+
+  <div class="admin-tabs" id="role-tabs"></div>
+
+  <div class="stats">
+    <div class="stat-card">
+      <h2 id="best-product">—</h2>
+      <p>Best Selling Product</p>
+    </div>
+
+    <div class="stat-card">
+      <h2 id="sold-count">—</h2>
+      <p>Total Sold</p>
+    </div>
+
+    <div class="stat-card">
+      <h2 id="prediction">—</h2>
+      <p>Predicted Next Week</p>
+    </div>
+  </div>
+
+  <div class="table-box">
+    <h2>AI Recommendation</h2>
+    <p id="ai-message">Loading AI analysis...</p>
+  </div>
+</section>
+
+<script>
+;(async function() {
+  BJ.initNav()
+
+  var profile = await BJ.requireAdmin()
+    if (!profile) return
+
+    document.getElementById('role-tabs').innerHTML =
+        BJ.getRoleTabs(profile.role, 'ai')
+
+  var { data, error } = await _db
+    .from('order_items')
+    .select('item_name, quantity')
+
+  if (error || !data || !data.length) {
+    document.getElementById('ai-message').textContent =
+      'No sales data yet. Place orders first, then AI prediction will appear here.'
+    return
+  }
+
+  var products = {}
+
+  data.forEach(function(item) {
+    products[item.item_name] = (products[item.item_name] || 0) + Number(item.quantity)
+  })
+
+  var best = Object.entries(products).sort(function(a, b) {
+    return b[1] - a[1]
+  })[0]
+
+  var bestName = best[0]
+  var sold = best[1]
+  var predicted = Math.round(sold * 1.2)
+
+  document.getElementById('best-product').textContent = bestName
+  document.getElementById('sold-count').textContent = sold
+  document.getElementById('prediction').textContent = predicted
+
+  document.getElementById('ai-message').innerHTML =
+    '<strong>' + bestName + '</strong> is currently the most frequently sold product. ' +
+    'Based on current sales, the system predicts about <strong>' + predicted +
+    '</strong> sales next week. Management should prepare enough stock for this item.'
+})()
+</script>
+
+</body>
+</html>

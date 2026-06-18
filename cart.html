@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cart - Big Joe's</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/auth.js"></script>
+</head>
+<body>
+<div class="topbar">📍 Exclusive promotions available at your local Big Joe's Restaurant <button>Set Location</button></div>
+<nav class="navbar">
+  <a href="index.html" class="logo">🍔 BIG JOE'S</a>
+  <div class="nav-links"></div>
+</nav>
+
+<section class="container">
+  <h1 class="section-title">My Cart</h1>
+  <div id="cart-empty" class="empty-state" style="display:none">
+    <div class="icon">🛒</div>
+    <h3>Your cart is empty</h3>
+    <p>Add some delicious items from our menu!</p>
+    <a href="menu.html" class="btn btn-yellow" style="margin-top:16px">Browse Menu</a>
+  </div>
+  <div id="cart-content">
+    <div class="table-box">
+      <table>
+        <thead><tr><th>Item</th><th>Quantity</th><th>Unit Price</th><th>Subtotal</th><th>Remove</th></tr></thead>
+        <tbody id="cart-body"></tbody>
+      </table>
+    </div>
+    <div class="table-box" style="margin-top:20px;max-width:420px;margin-left:auto">
+      <h3 style="margin-bottom:14px">Order Summary</h3>
+      <table>
+        <tr><td>Subtotal</td><td class="text-right" id="cart-subtotal">R0.00</td></tr>
+        <tr><td>Delivery</td><td class="text-right" style="color:#28a745">FREE</td></tr>
+        <tr>
+          <td><strong>Total</strong></td>
+          <td class="text-right"><strong id="cart-total" style="color:#c8102e;font-size:20px">R0.00</strong></td>
+        </tr>
+      </table>
+      <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap">
+        <a href="menu.html" class="btn btn-outline btn-sm">← Continue Shopping</a>
+        <a href="checkout.html" class="btn btn-yellow" style="flex:1;text-align:center">Checkout →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div><h3>BIG JOE'S</h3><a href="menu.html">Menu</a><a href="promos.html">Promos &amp; Rewards</a></div>
+  <div><h3>Support</h3><a href="faq.html">FAQ</a><a href="faq.html">FAQ</a><a href="#">Contact Big Joe's</a></div>
+  <div><h3>Find Us</h3><p>Durban, South Africa</p><p>031 123 4567</p></div>
+</footer>
+<div class="footer-bottom">Copyright &copy; Big Joe's Fast Food. All Rights Reserved.</div>
+
+<script>
+BJ.initNav()
+
+function changeQty(index, delta) {
+  var cart = BJ.getCart()
+  cart[index].qty += delta
+  if (cart[index].qty <= 0) cart.splice(index, 1)
+  BJ.saveCart(cart)
+  renderCart()
+}
+function removeItem(index) {
+  var cart = BJ.getCart()
+  cart.splice(index, 1)
+  BJ.saveCart(cart)
+  renderCart()
+}
+
+function renderCart() {
+  var cart = BJ.getCart()
+  var empty   = document.getElementById('cart-empty')
+  var content = document.getElementById('cart-content')
+  if (!cart.length) { empty.style.display = 'block'; content.style.display = 'none'; return }
+  empty.style.display = 'none'; content.style.display = 'block'
+  var total = 0
+  document.getElementById('cart-body').innerHTML = cart.map(function(item, i) {
+    var line = item.price * item.qty
+    total += line
+    return '<tr>' +
+      '<td><strong>' + item.name + '</strong></td>' +
+      '<td><button class="tbl-btn warn" onclick="changeQty(' + i + ',-1)">−</button>' +
+      '<span style="margin:0 10px;font-weight:bold">' + item.qty + '</span>' +
+      '<button class="tbl-btn success" onclick="changeQty(' + i + ',1)">+</button></td>' +
+      '<td>R' + Number(item.price).toFixed(2) + '</td>' +
+      '<td><strong>R' + line.toFixed(2) + '</strong></td>' +
+      '<td><button class="tbl-btn danger" onclick="removeItem(' + i + ')">✕</button></td>' +
+      '</tr>'
+  }).join('')
+  document.getElementById('cart-subtotal').textContent = 'R' + total.toFixed(2)
+  document.getElementById('cart-total').textContent    = 'R' + total.toFixed(2)
+}
+
+renderCart()
+</script>
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - Big Joe's</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/auth.js"></script>
+</head>
+<body>
+<div class="topbar">📍 Admin Panel — Big Joe's Fast Food</div>
+<nav class="navbar">
+  <a href="index.html" class="logo">🍔 BIG JOE'S</a>
+  <div class="nav-links"></div>
+</nav>
+
+<section class="container">
+  <h1 class="section-title">Admin Dashboard</h1>
+
+  <div class="admin-tabs" id="role-tabs"></div>
+
+  <div class="stats">
+    <div class="stat-card"><h2 id="stat-sales">—</h2><p>Today's Revenue</p></div>
+    <div class="stat-card"><h2 id="stat-orders">—</h2><p>Orders Today</p></div>
+    <div class="stat-card"><h2 id="stat-customers">—</h2><p>Total Customers</p></div>
+    <div class="stat-card"><h2 id="stat-products">—</h2><p>Active Products</p></div>
+  </div>
+
+  <div class="table-box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+      <h2>All Orders</h2>
+      <select id="status-filter" onchange="loadOrders()" style="width:auto;padding:8px 14px">
+        <option value="">All Statuses</option>
+        <option value="pending">Pending</option>
+        <option value="confirmed">Confirmed</option>
+        <option value="preparing">Preparing</option>
+        <option value="ready">Ready</option>
+        <option value="done">Done</option>
+        <option value="collected">Collected</option>
+        <option value="delivered">Delivered</option>
+        <option value="cancelled">Cancelled</option>
+      </select>
+    </div>
+    <div id="orders-table"><div class="loading-state"><div class="spin-lg"></div>Loading orders...</div></div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div><h3>BIG JOE'S</h3><a href="menu.html">Menu</a></div>
+  <div><h3>Admin</h3><a href="dashboard.html">Dashboard</a><a href="reports.html">Reports</a></div>
+  <div><h3>Find Us</h3><p>Durban, South Africa</p></div>
+</footer>
+<div class="footer-bottom">Copyright &copy; Big Joe's Fast Food. All Rights Reserved.</div>
+
+<script>
+var STATUSES = ['pending','confirmed','preparing','ready','done','collected','delivered','cancelled']
+
+async function loadOrders() {
+  var filter = document.getElementById('status-filter').value
+  var q = _db.from('orders').select('*, order_items(item_name, quantity, unit_price)').order('created_at', { ascending: false }).limit(80)
+  if (filter) q = q.eq('status', filter)
+
+  var { data: orders, error } = await q
+  var container = document.getElementById('orders-table')
+
+  if (error) { container.innerHTML = '<div class="alert alert-error">Failed to load orders: ' + error.message + '</div>'; return }
+  if (!orders || !orders.length) { container.innerHTML = '<div class="empty-state"><div class="icon">📋</div><h3>No orders found</h3></div>'; return }
+
+  container.innerHTML = '<table><thead><tr><th>Order #</th><th>Customer</th><th>Items</th><th>Type</th><th>Payment</th><th>Amount</th><th>Status</th><th>Date</th><th>Update</th></tr></thead><tbody>' +
+    orders.map(function(o) {
+      var date = new Date(o.created_at).toLocaleString('en-ZA', { dateStyle: 'short', timeStyle: 'short' })
+      var opts = STATUSES.map(function(s) {
+        return '<option value="' + s + '"' + (s === o.status ? ' selected' : '') + '>' + s.charAt(0).toUpperCase() + s.slice(1) + '</option>'
+      }).join('')
+      var items = (o.order_items || []).map(function(i){ return i.item_name + ' × ' + i.quantity }).join('<br>') || '—'
+      var pay = o.payment_method || '—'
+      if (o.card_last4) pay += ' ****' + o.card_last4
+
+      return '<tr>' +
+        '<td><strong>' + o.order_number + '</strong></td>' +
+        '<td>' + (o.customer_name || '—') + '<br><span class="text-muted">' + (o.customer_phone || '') + '</span></td>' +
+        '<td style="min-width:160px">' + items + '</td>' +
+        '<td>' + String(o.order_type || '').replace('_', ' ') + '</td>' +
+        '<td>' + pay + '</td>' +
+        '<td><strong>R' + Number(o.total_amount).toFixed(2) + '</strong></td>' +
+        '<td>' + BJ.statusBadge(o.status) + '</td>' +
+        '<td class="text-muted">' + date + '</td>' +
+        '<td><select onchange="updateStatus(\'' + o.id + '\', this.value)" style="padding:6px 8px;font-size:12px;border-radius:4px;border:1px solid #ddd">' + opts + '</select></td>' +
+        '</tr>'
+    }).join('') + '</tbody></table>'
+}
+
+async function updateStatus(id, status) {
+  var { error } = await _db.from('orders').update({ status: status, updated_at: new Date().toISOString() }).eq('id', id)
+  if (error) BJ.showToast('Failed to update status: ' + error.message, 'error')
+  else { BJ.showToast('Order status updated to ' + status + '!'); loadOrders() }
+}
+
+;(async function() {
+  BJ.initNav()
+  var profile = await BJ.requireAdmin()
+    if (!profile) return
+
+    document.getElementById('role-tabs').innerHTML =
+        BJ.getRoleTabs(profile.role, 'dashboard')
+
+  var today = new Date(); today.setHours(0,0,0,0)
+  var todayISO = today.toISOString()
+
+  var results = await Promise.all([
+    _db.from('orders').select('total_amount, status').gte('created_at', todayISO),
+    _db.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'customer'),
+    _db.from('menu_items').select('*', { count: 'exact', head: true }).eq('available', true)
+  ])
+
+  var todayOrders = results[0].data || []
+  var custCount   = results[1].count || 0
+  var prodCount   = results[2].count || 0
+  var todaySales  = todayOrders.filter(function(o) { return o.status !== 'cancelled' }).reduce(function(s, o) { return s + Number(o.total_amount) }, 0)
+
+  document.getElementById('stat-sales').textContent     = 'R' + todaySales.toFixed(2)
+  document.getElementById('stat-orders').textContent    = todayOrders.length
+  document.getElementById('stat-customers').textContent = custCount
+  document.getElementById('stat-products').textContent  = prodCount
+
+  loadOrders()
+})()
+</script>
+</body>
+</html>

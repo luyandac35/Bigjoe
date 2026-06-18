@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kitchen Screen - Big Joe's</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+    <script src="js/supabase.js"></script>
+    <script src="js/auth.js"></script>
+</head>
+<body>
+
+    <div class="topbar">👨‍🍳 Kitchen Screen — Staff Only</div>
+
+    <nav class="navbar">
+        <a href="index.html" class="logo">🍔 BIG JOE'S</a>
+        <div class="nav-links"></div>
+    </nav>
+
+    <section class="container">
+        <h1 class="section-title">Kitchen Orders</h1>
+
+        <div class="admin-tabs" id="role-tabs"></div>
+
+        <div class="table-box" style="margin-bottom:20px;text-align:center">
+            <h2>Now Serving</h2>
+            <h1 id="now-serving" style="font-size:44px;color:#c8102e">—</h1>
+            <p class="text-muted">Orders marked Ready will appear here.</p>
+        </div>
+
+        <div id="orders-box">
+            <div class="loading-state">
+                <div class="spin-lg"></div>
+                Loading kitchen orders...
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div>
+            <h3>BIG JOE'S</h3>
+            <a href="kitchen.html">Kitchen</a>
+            <a href="orders.html">Trace Order</a>
+        </div>
+
+        <div>
+            <h3>Staff</h3>
+            <a href="#" onclick="BJ.logout();return false">Logout</a>
+        </div>
+
+        <div>
+            <h3>Find Us</h3>
+            <p>Durban, South Africa</p>
+        </div>
+    </footer>
+
+    <div class="footer-bottom">Copyright &copy; Big Joe's Fast Food. All Rights Reserved.</div>
+
+    <script>
+        async function reduceInventoryForOrder(orderId) {
+            var orderResult = await _db
+                .from('orders')
+                .select('id, stock_deducted')
+                .eq('id', orderId)
+                .single()
+
+            if (orderResult.error || !orderResult.data) {
+                BJ.showToast('Could not check stock deduction status.', 'error')
+                return false
+            }
+
+            if (orderResult.data.stock_deducted === true) {
+                return true
+            }
+
+            var itemsResult = await _db
+                .from('order_items')
+                .select('item_name, quantity')
+                .eq('order_id', orderId)
+
+            if (itemsResult.error) {
+                BJ.showToast('Could not load order items for stock update.', 'error')
+                return false
+            }
+
+            var stockMap = {
+                'Big Joe Burger': [
+                    { stock: 'Burger Buns', qty: 1 },
+                    { stock: 'Beef Patties', qty: 1 },
+                    { stock: 'Cheese Slices', qty: 1 }
+                ],
+                'Double Cheese Burger': [
+                    { stock: 'Burger Buns', qty: 1 },
+                    { stock: 'Beef Patties', qty: 2 },
+                    { stock: 'Cheese Slices', qty: 2 }
+                ],
+                'Chicken Wings Meal': [
+                    { stock: 'Chicken Pieces', qty: 3 },
+                    { stock: 'Chips / Fries', qty: 1 },
+                    { stock: 'Soft Drink Cans', qty: 1 }
+                ],
+                'Crispy Chicken Burger': [
+                    { stock: 'Burger Buns', qty: 1 },
+                    { stock: 'Chicken Pieces', qty: 1 },
+                    { stock: 'Chips / Fries', qty: 1 }
+                ],
+                'Streetwise Meal': [
+                    { stock: 'Chicken Pieces', qty: 1 },
+                    { stock: 'Chips / Fries', qty: 1 }
+                ],
+                'Family Bucket': [
+                    { stock: 'Chicken Pieces', qty: 8 },
+                    { stock: 'Chips / Fries', qty: 2 },
+                    { stock: 'Soft Drink Cans', qty: 4 }
+                ],
+                'Chicken Wrap': [
+                    { stock: 'Wraps / Tortillas', qty: 1 },
+                    { stock: 'Chicken Pieces', qty: 1 }
+                ],
+                'Chicken Strips Box': [
+                    { stock: 'Chicken Pieces', qty: 3 },
+                    { stock: 'Chips / Fries', qty: 1 }
+                ],
+                'Large Chips': [
+                    { stock: 'Chips / Fries', qty: 1 }
+                ],
+                'Loaded Fries': [
+                    { stock: 'Chips / Fries', qty: 1 },
+                    { stock: 'Cheese Slices', qty: 1 }
+                ],
+                'Chocolate Milkshake': [
+                    { stock: 'Milkshake Mix', qty: 1 }
+                ],
+                'Coke Buddy': [
+                    { stock: 'Soft Drink Cans', qty: 1 }
+                ],
+                'Coffee': [],
+                'Ice Cream Sundae': []
+            }
+
+            var items = itemsResult.data || []
+
+            for (var i = 0; i < items.length; i++) {
+                var orderItem = items[i]
+                var recipe = stockMap[orderItem.item_name] || []
+
+                for (var r = 0; r < recipe.length; r++) {
+                    var ingredient = recipe[r]
+                    var amountToRemove = Number(ingredient.qty) * Number(orderItem.quantity)
+
+                    var stockResult = await _db
+                        .from('inventory')
+                        .select('id, quantity')
+                        .eq('item_name', ingredient.stock)
+                        .single()
+
+                    if (stockResult.data) {
+                        var newQty = Math.max(0, Number(stockResult.data.quantity) - amountToRemove)
+
+                        await _db
+                            .from('inventory')
+                            .update({
+                                quantity: newQty,
+                                updated_at: new Date().toISOString()
+                            })
+                            .eq('id', stockResult.data.id)
+                    }
+                }
+            }
+
+            await _db
+                .from('orders')
+                .update({
+                    stock_deducted: true,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', orderId)
+
+            return true
+        }
+
+        async function updateStatus(id, status) {
+            var updateData = {
+                status: status,
+                updated_at: new Date().toISOString()
+            }
+
+            if (status === 'done') {
+                var ok = await reduceInventoryForOrder(id)
+
+                if (!ok) {
+                    BJ.showToast('Order not completed because stock could not be updated.', 'error')
+                    return
+                }
+            }
+
+            var result = await _db
+                .from('orders')
+                .update(updateData)
+                .eq('id', id)
+
+            if (result.error) {
+                BJ.showToast('Failed to update order: ' + result.error.message, 'error')
+                return
+            }
+
+            BJ.showToast('Order updated to ' + status)
+            loadKitchenOrders()
+        }
+
+        async function loadKitchenOrders() {
+            var box = document.getElementById('orders-box')
+            var nowServing = document.getElementById('now-serving')
+
+            var result = await _db
+                .from('orders')
+                .select('*, order_items(item_name, quantity)')
+                .in('status', ['pending', 'confirmed', 'preparing', 'ready'])
+                .order('created_at', { ascending: true })
+
+            if (result.error) {
+                box.innerHTML =
+                    '<div class="alert alert-error">' +
+                    result.error.message +
+                    '</div>'
+                return
+            }
+
+            var orders = result.data || []
+
+            var readyOrders = orders.filter(function (order) {
+                return order.status === 'ready'
+            })
+
+            nowServing.textContent = readyOrders.length ? readyOrders[0].order_number : '—'
+
+            if (!orders.length) {
+                box.innerHTML =
+                    '<div class="empty-state">' +
+                    '<div class="icon">✅</div>' +
+                    '<h3>No active kitchen orders</h3>' +
+                    '<p>New orders will appear here automatically.</p>' +
+                    '</div>'
+                return
+            }
+
+            box.innerHTML = orders.map(function (order) {
+                var items = (order.order_items || []).map(function (i) {
+                    return '<li>' + i.item_name + ' × ' + i.quantity + '</li>'
+                }).join('')
+
+                var date = new Date(order.created_at).toLocaleString('en-ZA', {
+                    dateStyle: 'short',
+                    timeStyle: 'short'
+                })
+
+                return '<div class="order-card" style="margin-bottom:18px">' +
+
+                    '<div class="order-header">' +
+                    '<div>' +
+                    '<div class="order-number">' + order.order_number + '</div>' +
+                    '<div class="order-date">📅 ' + date + ' · ' + order.order_type.replace("_", " ") + '</div>' +
+                    '<div class="order-date">👤 ' + order.customer_name + ' · 📞 ' + order.customer_phone + '</div>' +
+                    '</div>' +
+                    BJ.statusBadge(order.status) +
+                    '</div>' +
+
+                    '<div class="order-items-list">' +
+                    '<ul style="margin-left:18px">' + items + '</ul>' +
+                    '</div>' +
+
+                    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">' +
+
+                    '<button class="btn btn-outline btn-sm" onclick="updateStatus(\'' + order.id + '\', \'preparing\')">Preparing</button>' +
+
+                    '<button class="btn btn-yellow btn-sm" onclick="updateStatus(\'' + order.id + '\', \'ready\')">Ready</button>' +
+
+                    '<button class="btn btn-green btn-sm" onclick="updateStatus(\'' + order.id + '\', \'done\')">Done</button>' +
+
+                    '</div>' +
+
+                    '</div>'
+            }).join('')
+        }
+
+        ; (async function () {
+            await BJ.initNav()
+
+            var profile = await BJ.requireStaffOrAdmin()
+            if (!profile) return
+
+            document.getElementById('role-tabs').innerHTML =
+                BJ.getRoleTabs(profile.role, 'kitchen')
+
+            loadKitchenOrders()
+
+            setInterval(function () {
+                loadKitchenOrders()
+            }, 10000)
+        })()
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Menu - Big Joe's</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/auth.js"></script>
+</head>
+<body>
+<div class="topbar">📍 Exclusive promotions available at your local Big Joe's Restaurant <button>Set Location</button></div>
+<nav class="navbar">
+  <a href="index.html" class="logo">🍔 BIG JOE'S</a>
+  <div class="nav-links"></div>
+</nav>
+
+<section class="container">
+  <h1 class="section-title">Our Menu</h1>
+  <div class="category-menu" id="category-bar">
+    <a href="#" class="active" data-cat="all" onclick="setCategory('all');return false">All</a>
+  </div>
+  <div class="search-box">
+    <input id="menu-search" placeholder="🔍 Search our menu..." oninput="filterMenu()">
+  </div>
+  <div id="menu-grid" class="grid">
+    <div class="loading-state"><div class="spin-lg"></div>Loading menu...</div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div><h3>BIG JOE'S</h3><a href="menu.html">Menu</a><a href="promos.html">Promos &amp; Rewards</a><a href="orders.html">Track Orders</a></div>
+  <div><h3>Support</h3><a href="faq.html">FAQ</a><a href="faq.html">FAQ</a><a href="#">Contact Big Joe's</a><a href="#">Work With Us</a></div>
+  <div><h3>Legal</h3><a href="#">Privacy Policy</a><a href="#">Terms of Use</a><a href="#">Cookie Settings</a></div>
+  <div><h3>Find Us</h3><p>Durban, South Africa</p><p>031 123 4567</p><p>Instagram | Facebook | TikTok</p></div>
+</footer>
+<div class="footer-bottom">Copyright &copy; Big Joe's Fast Food. All Rights Reserved.</div>
+
+<script>
+    var allItems = []
+    var activeCategory = 'all'
+
+    function setCategory(cat) {
+        activeCategory = cat
+
+        document.querySelectorAll('#category-bar a').forEach(function (a) {
+            a.classList.toggle('active', a.dataset.cat === cat)
+        })
+
+        renderMenu()
+    }
+
+    function filterMenu() {
+        renderMenu()
+    }
+
+    function renderMenu() {
+        var searchInput = document.getElementById('menu-search')
+        var q = searchInput ? searchInput.value.toLowerCase() : ''
+        var grid = document.getElementById('menu-grid')
+
+        var filtered = allItems.filter(function (item) {
+            var name = (item.name || '').toLowerCase()
+            var desc = (item.description || '').toLowerCase()
+            var cat = item.category || ''
+
+            return (activeCategory === 'all' || cat === activeCategory) &&
+                (!q || name.includes(q) || desc.includes(q))
+        })
+
+        if (!filtered.length) {
+            grid.innerHTML =
+                '<div class="empty-state">' +
+                '<div class="icon">🍽️</div>' +
+                '<h3>No items found</h3>' +
+                '</div>'
+            return
+        }
+
+        grid.innerHTML = filtered.map(function (item) {
+            var img = item.image_url ||
+                'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=800&q=80'
+
+            var safeName = String(item.name || '').replace(/'/g, "\\'")
+            var safeId = item.id || ''
+            var price = Number(item.price || 0)
+
+            return '<div class="card menu-item">' +
+                '<img src="' + img + '" alt="' + safeName + '" loading="lazy">' +
+                '<div class="card-body">' +
+                '<small>' + (item.category || '') + '</small>' +
+                '<h3>' + (item.name || '') + '</h3>' +
+                '<p>' + (item.description || '') + '</p>' +
+                '<p class="price">R' + price.toFixed(2) + '</p>' +
+                '<button class="btn" onclick="addToCart(\'' + safeName + '\',' + price + ',\'' + safeId + '\')">Add To Cart</button>' +
+                '</div>' +
+                '</div>'
+        }).join('')
+    }
+
+    async function loadMenu() {
+        var grid = document.getElementById('menu-grid')
+
+        try {
+            if (window.BJ && BJ.initNav) {
+                await BJ.initNav()
+            }
+
+            if (typeof _db === 'undefined') {
+                grid.innerHTML =
+                    '<div class="alert alert-error">Supabase connection not found. Check js/supabase.js.</div>'
+                return
+            }
+
+            var result = await _db
+                .from('menu_items')
+                .select('*')
+                .eq('available', true)
+                .order('category', { ascending: true })
+
+            console.log('Menu result:', result)
+
+            if (result.error) {
+                grid.innerHTML =
+                    '<div class="alert alert-error">Menu error: ' + result.error.message + '</div>'
+                return
+            }
+
+            allItems = result.data || []
+
+            if (!allItems.length) {
+                grid.innerHTML =
+                    '<div class="empty-state">' +
+                    '<div class="icon">🍽️</div>' +
+                    '<h3>No available menu items found</h3>' +
+                    '<p>Check Supabase menu_items table and make sure available is TRUE.</p>' +
+                    '</div>'
+                return
+            }
+
+            var cats = ['all']
+
+            allItems.forEach(function (item) {
+                if (item.category && !cats.includes(item.category)) {
+                    cats.push(item.category)
+                }
+            })
+
+            var bar = document.getElementById('category-bar')
+
+            bar.innerHTML = cats.map(function (c) {
+                return '<a href="#" class="' + (c === 'all' ? 'active' : '') + '" data-cat="' + c + '" onclick="setCategory(\'' + c + '\');return false">' +
+                    (c === 'all' ? 'All' : c.charAt(0).toUpperCase() + c.slice(1)) +
+                    '</a>'
+            }).join('')
+
+            renderMenu()
+
+        } catch (err) {
+            console.error('Menu failed:', err)
+
+            grid.innerHTML =
+                '<div class="alert alert-error">Menu failed to load: ' + err.message + '</div>'
+        }
+    }
+
+    loadMenu()
+</script>
+</body>
+</html>

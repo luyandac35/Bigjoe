@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register - Big Joe's</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/auth.js"></script>
+</head>
+<body>
+<div class="topbar">📍 Exclusive promotions available at your local Big Joe's <button>Set Location</button></div>
+<nav class="navbar">
+  <a href="index.html" class="logo">🍔 BIG JOE'S</a>
+  <div class="nav-links"></div>
+</nav>
+
+<section class="container" style="max-width:560px;padding-top:50px">
+  <h1 class="section-title">Create Account</h1>
+  <div class="form-box">
+    <div id="auth-error" class="alert alert-error" style="display:none"></div>
+    <div id="auth-success" class="alert alert-success" style="display:none"></div>
+    <div class="form-row">
+      <div><label>First Name</label><input id="firstname" type="text" placeholder="John"></div>
+      <div><label>Last Name</label><input id="lastname" type="text" placeholder="Doe"></div>
+    </div>
+    <label>Email Address</label>
+    <input id="email" type="email" placeholder="you@example.com">
+    <label>Phone Number</label>
+    <input id="phone" type="tel" placeholder="071 000 0000">
+    <label>Password</label>
+    <input id="password" type="password" placeholder="Min. 6 characters">
+    <label>Confirm Password</label>
+    <input id="confirm" type="password" placeholder="Repeat password">
+    <br><br>
+    <button class="btn btn-full" id="register-btn">Create Account</button>
+    <p style="margin-top:18px;text-align:center;color:#666;font-size:14px">
+      Already have an account? <a href="login.html" style="color:#c8102e;font-weight:bold">Sign In</a>
+    </p>
+  </div>
+</section>
+
+<footer class="footer">
+  <div><h3>BIG JOE'S</h3><a href="menu.html">Menu</a><a href="promos.html">Promos &amp; Rewards</a></div>
+  <div><h3>Support</h3><a href="faq.html">FAQ</a><a href="faq.html">FAQ</a><a href="#">Contact Big Joe's</a></div>
+  <div><h3>Find Us</h3><p>Durban, South Africa</p><p>031 123 4567</p></div>
+</footer>
+<div class="footer-bottom">Copyright &copy; Big Joe's Fast Food. All Rights Reserved.</div>
+
+<script>
+BJ.initNav()
+
+document.getElementById('register-btn').addEventListener('click', async function() {
+  var errEl = document.getElementById('auth-error')
+  var okEl  = document.getElementById('auth-success')
+  errEl.style.display = 'none'
+  okEl.style.display  = 'none'
+
+  var first    = document.getElementById('firstname').value.trim()
+  var last     = document.getElementById('lastname').value.trim()
+  var email    = document.getElementById('email').value.trim()
+  var phone    = document.getElementById('phone').value.trim()
+  var password = document.getElementById('password').value
+  var confirm  = document.getElementById('confirm').value
+
+  if (!first || !last || !email || !password) {
+    errEl.textContent = 'Please fill in all required fields.'
+    errEl.style.display = 'block'; return
+  }
+  if (password.length < 6) {
+    errEl.textContent = 'Password must be at least 6 characters.'
+    errEl.style.display = 'block'; return
+  }
+  if (password !== confirm) {
+    errEl.textContent = 'Passwords do not match.'
+    errEl.style.display = 'block'; return
+  }
+
+  var btn = document.getElementById('register-btn')
+  btn.innerHTML = '<span class="spinner"></span> Creating account...'
+  btn.disabled = true
+
+  var { data, error } = await _db.auth.signUp({
+    email: email,
+    password: password,
+    options: { data: { full_name: first + ' ' + last } }
+  })
+
+  if (error) {
+    errEl.textContent = error.message
+    errEl.style.display = 'block'
+    btn.textContent = 'Create Account'
+    btn.disabled = false
+    return
+  }
+
+  if (data.user && phone) {
+    await _db.from('profiles').update({ phone: phone }).eq('id', data.user.id)
+  }
+
+  okEl.textContent = '✅ Account created! Redirecting...'
+  okEl.style.display = 'block'
+  setTimeout(function() { window.location.href = 'menu.html' }, 1500)
+})
+</script>
+</body>
+</html>

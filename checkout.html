@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout - Big Joe's</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/auth.js"></script>
+  <style>
+    #checkout-layout { display:grid; grid-template-columns:1fr 380px; gap:24px; align-items:start }
+    @media(max-width:768px){ #checkout-layout { grid-template-columns:1fr } }
+    .demo-note { background:#fff8df; border:1px dashed #c8102e; padding:12px; border-radius:8px; color:#444; font-size:13px; margin-top:12px }
+  </style>
+</head>
+<body>
+<div class="topbar">📍 Exclusive promotions available at your local Big Joe's Restaurant <button>Set Location</button></div>
+<nav class="navbar">
+  <a href="index.html" class="logo">🍔 BIG JOE'S</a>
+  <div class="nav-links"></div>
+</nav>
+
+<section class="container">
+  <h1 class="section-title">Checkout</h1>
+  <div class="alert alert-info" style="text-align:center">Customers do not need to log in. Place your order and keep your ticket number.</div>
+
+  <div id="checkout-layout">
+    <div class="form-box" style="max-width:100%">
+      <h3 style="margin-bottom:20px">Customer Details</h3>
+      <div id="form-error" class="alert alert-error" style="display:none"></div>
+      <div id="form-success" class="alert alert-success" style="display:none"></div>
+
+      <div class="form-row">
+        <div><label>Full Name</label><input id="cust-name" placeholder="Your full name"></div>
+        <div><label>Phone Number</label><input id="cust-phone" placeholder="071 000 0000"></div>
+      </div>
+
+      <label>Order Type</label>
+      <select id="order-type" onchange="toggleAddress()">
+        <option value="collection">Collection</option>
+        <option value="dine_in">Dine In</option>
+        <option value="delivery">Delivery</option>
+      </select>
+
+      <div id="address-field" style="display:none">
+        <label>Delivery Address</label>
+        <textarea id="cust-address" placeholder="Street, suburb, city" rows="3"></textarea>
+      </div>
+
+      <label>Special Instructions Optional</label>
+      <textarea id="cust-notes" placeholder="Allergies, no onions, etc." rows="2"></textarea>
+
+      <label>Payment Method</label>
+      <select id="payment" onchange="toggleCardFields()">
+        <option value="cash">Cash on Collection / Delivery</option>
+        <option value="card">Card</option>
+        <option value="eft">EFT</option>
+      </select>
+
+      <div id="card-fields" style="display:none">
+        <label>Cardholder Name</label>
+        <input id="card-name" placeholder="Name on card">
+
+        <label>Card Number</label>
+        <input id="card-number" maxlength="19" placeholder="1234 5678 9012 3456">
+
+        <div class="form-row">
+          <div><label>Expiry Date</label><input id="card-expiry" placeholder="MM/YY"></div>
+          <div><label>CVV</label><input id="card-cvv" maxlength="4" placeholder="123"></div>
+        </div>
+
+        <div class="demo-note">💳 Demo payment only. Real card payments are not processed. The system validates the fields and saves only the last 4 digits.</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="table-box" style="margin-bottom:16px">
+        <h3 style="margin-bottom:14px">Order Summary</h3>
+        <div id="order-items-list"></div>
+        <hr class="divider">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <strong>Total</strong>
+          <strong id="order-total" style="color:#c8102e;font-size:22px">R0.00</strong>
+        </div>
+      </div>
+      <button class="btn btn-yellow btn-full" id="place-btn" style="font-size:16px">Place Order →</button>
+      <a href="cart.html" class="btn btn-outline btn-full" style="text-align:center;margin-top:10px">← Back to Cart</a>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div><h3>BIG JOE'S</h3><a href="menu.html">Menu</a><a href="promos.html">Promos &amp; Rewards</a><a href="orders.html">Track Orders</a></div>
+  <div><h3>Support</h3><a href="faq.html">FAQ</a><a href="#">Contact Big Joe's</a></div>
+  <div><h3>Find Us</h3><p>Durban, South Africa</p><p>031 123 4567</p></div>
+</footer>
+<div class="footer-bottom">Copyright &copy; Big Joe's Fast Food. All Rights Reserved.</div>
+
+<script>
+BJ.initNav()
+
+function toggleAddress() {
+  var t = document.getElementById('order-type').value
+  document.getElementById('address-field').style.display = t === 'delivery' ? 'block' : 'none'
+}
+
+function toggleCardFields() {
+  var p = document.getElementById('payment').value
+  document.getElementById('card-fields').style.display = p === 'card' ? 'block' : 'none'
+}
+
+function generateOrderNumber() {
+  return 'BJ' + Math.floor(Math.random() * 90000 + 10000)
+}
+
+var cart = BJ.getCart()
+if (!cart.length) { window.location.href = 'cart.html' }
+
+var total = 0
+document.getElementById('order-items-list').innerHTML = cart.map(function(item) {
+  var line = Number(item.price) * Number(item.qty)
+  total += line
+  return '<div style="display:flex;justify-content:space-between;padding:7px 0;font-size:14px;border-bottom:1px solid #f5f5f5">' +
+    '<span>' + item.name + ' × ' + item.qty + '</span>' +
+    '<span>R' + line.toFixed(2) + '</span></div>'
+}).join('')
+document.getElementById('order-total').textContent = 'R' + total.toFixed(2)
+
+document.getElementById('place-btn').addEventListener('click', async function() {
+  var name      = document.getElementById('cust-name').value.trim()
+  var phone     = document.getElementById('cust-phone').value.trim()
+  var orderType = document.getElementById('order-type').value
+  var address   = document.getElementById('cust-address').value.trim()
+  var notes     = document.getElementById('cust-notes').value.trim()
+  var payment   = document.getElementById('payment').value
+  var errEl     = document.getElementById('form-error')
+  var successEl = document.getElementById('form-success')
+  var btn       = document.getElementById('place-btn')
+
+  errEl.style.display = 'none'
+  successEl.style.display = 'none'
+
+  if (!name || !phone) { errEl.textContent = 'Please enter your name and phone number.'; errEl.style.display = 'block'; return }
+  if (orderType === 'delivery' && !address) { errEl.textContent = 'Please enter a delivery address.'; errEl.style.display = 'block'; return }
+
+  var cardLast4 = null
+  if (payment === 'card') {
+    var cardName = document.getElementById('card-name').value.trim()
+    var cardNum  = document.getElementById('card-number').value.replace(/\s/g, '')
+    var expiry   = document.getElementById('card-expiry').value.trim()
+    var cvv      = document.getElementById('card-cvv').value.trim()
+    if (!cardName || cardNum.length < 12 || !expiry || cvv.length < 3) {
+      errEl.textContent = 'Please enter valid card details.'
+      errEl.style.display = 'block'
+      return
+    }
+    cardLast4 = cardNum.slice(-4)
+  }
+
+  btn.innerHTML = '<span class="spinner"></span> Placing order...'
+  btn.disabled = true
+
+  var orderNum = generateOrderNumber()
+  var payload = {
+    order_number: orderNum,
+    user_id: null,
+    customer_name: name,
+    customer_phone: phone,
+    delivery_address: address || null,
+    order_type: orderType,
+    payment_method: payment,
+    card_last4: cardLast4,
+    total_amount: total,
+    notes: notes || null,
+    status: 'pending'
+  }
+
+  var { data: order, error } = await _db.from('orders').insert(payload).select().single()
+
+  if (error) {
+    errEl.textContent = 'Failed to place order: ' + error.message + ' If this mentions payment_method or card_last4, run the included supabase-fix.sql first.'
+    errEl.style.display = 'block'
+    btn.textContent = 'Place Order →'
+    btn.disabled = false
+    return
+  }
+
+  var orderItems = cart.map(function(item) {
+    return {
+      order_id: order.id,
+      menu_item_id: item.itemId || null,
+      item_name: item.name,
+      unit_price: Number(item.price),
+      quantity: Number(item.qty)
+    }
+  })
+
+  var { error: itemError } = await _db.from('order_items').insert(orderItems)
+  if (itemError) {
+    errEl.textContent = 'Order created but items failed to save: ' + itemError.message
+    errEl.style.display = 'block'
+    btn.textContent = 'Place Order →'
+    btn.disabled = false
+    return
+  }
+
+  localStorage.removeItem('bigJoeCart')
+  localStorage.setItem('lastOrderNum', orderNum)
+  localStorage.setItem('lastOrderPhone', phone)
+  successEl.innerHTML = '✅ Order placed successfully! Your ticket number is <strong>' + orderNum + '</strong>.'
+  successEl.style.display = 'block'
+  BJ.updateCartCount()
+
+  setTimeout(function() { window.location.href = 'orders.html' }, 1200)
+})
+</script>
+</body>
+</html>
