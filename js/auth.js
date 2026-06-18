@@ -152,7 +152,7 @@ BJ.getRoleTabs = function (role, active) {
             '<a href="kitchen.html" class="' + (active === 'kitchen' ? 'active' : '') + '">👨‍🍳 Kitchen</a>' +
             '<a href="products.html" class="' + (active === 'products' ? 'active' : '') + '">🍔 Products</a>' +
             '<a href="inventory.html" class="' + (active === 'inventory' ? 'active' : '') + '">📦 Inventory</a>' +
-            '<a href="customers.html" class="' + (active === 'customers' ? 'active' : '') + '">👥 Customers</a>' +
+            '<a href="customers.html" class="' + (active === 'customers' ? 'active' : '') + '">👥 current user</a>' +
             '<a href="reports.html" class="' + (active === 'reports' ? 'active' : '') + '">📈 Reports</a>' +
             '<a href="ai.html" class="' + (active === 'ai' ? 'active' : '') + '">🤖 AI</a>' +
             '<a href="iot.html" class="' + (active === 'iot' ? 'active' : '') + '">📡 IoT</a>' +
